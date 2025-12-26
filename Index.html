@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creditum Central | Premium Wallet</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050810; --card-bg: rgba(15, 23, 42, 0.8);
+            --accent: #38bdf8; --text-primary: #f8fafc;
+            --text-secondary: #94a3b8; --danger: #f43f5e; --success: #10b981;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Plus Jakarta Sans', sans-serif; }
+        body { background: var(--bg); color: var(--text-primary); min-height: 100vh; display: flex; justify-content: center; padding: 20px; }
+        .app-shell { width: 100%; max-width: 420px; }
+        .glass-card { background: var(--card-bg); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 28px; padding: 24px; margin-bottom: 20px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); }
+        .hidden { display: none !important; }
+        input { width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); padding: 14px 18px; border-radius: 14px; color: white; margin-bottom: 15px; outline: none; }
+        .btn { width: 100%; padding: 16px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; transition: 0.3s; }
+        .btn-primary { background: linear-gradient(135deg, #38bdf8, #818cf8); color: white; }
+        .btn-google { background: white; color: #1e293b; margin-top: 10px; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.05); color: var(--text-secondary); border: 1px solid rgba(255,255,255,0.1); }
+        .profile-pic { width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--accent); cursor: pointer; object-fit: cover; }
+        .balance-display { background: rgba(56, 189, 248, 0.1); border-radius: 22px; padding: 30px 20px; text-align: center; border: 1px solid rgba(56, 189, 248, 0.2); }
+        .history-item { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 14px; }
+        .overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+    <div id="auth-screen" class="glass-card" style="text-align: center; margin-top: 50px;">
+        <h1 style="color: var(--accent); font-size: 32px; margin-bottom: 10px;">CREDITUM</h1>
+        <button class="btn btn-google" id="google-login-btn">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="18"> Google Sign In
+        </button>
+        <button class="btn btn-primary" onclick="showScreen('signup-screen')" style="margin-top:20px">New Wallet</button>
+        <button class="btn btn-secondary" onclick="showScreen('signin-screen')" style="margin-top:12px">Existing User</button>
+    </div>
+
+    <div id="signup-screen" class="glass-card hidden">
+        <h2>New Wallet</h2>
+        <input type="text" id="reg-name" placeholder="Choose Name">
+        <input type="password" id="reg-pin" maxlength="6" placeholder="Set 6-Digit PIN" style="text-align:center">
+        <button class="btn btn-primary" onclick="handleSignUp()">Create Account</button>
+        <button class="btn btn-secondary" onclick="showScreen('auth-screen')" style="margin-top:10px">Back</button>
+    </div>
+
+    <div id="signin-screen" class="glass-card hidden">
+        <h2>Sign In</h2>
+        <input type="text" id="login-name" placeholder="Name">
+        <input type="text" id="login-pass" placeholder="16-Char Pass">
+        <input type="password" id="login-pin" maxlength="6" placeholder="PIN">
+        <button class="btn btn-primary" onclick="handleSignIn()">Access Wallet</button>
+    </div>
+
+    <div id="google-setup-screen" class="glass-card hidden">
+        <h2>Finish Setup</h2>
+        <input type="password" id="google-reg-pin" maxlength="6" placeholder="Set 6-Digit PIN" style="text-align:center">
+        <button class="btn btn-primary" onclick="finalizeGoogleAuth()">Set PIN & Start</button>
+    </div>
+
+    <div id="dashboard-screen" class="hidden">
+        <div style="text-align:center; margin-bottom:20px">
+            <img id="user-photo" class="profile-pic" src="" onclick="document.getElementById('p-upload').click()">
+            <input type="file" id="p-upload" class="hidden" accept="image/*">
+            <h2 id="dash-name" style="margin-top:10px;"></h2>
+        </div>
+        <div class="balance-display">
+            <p style="font-size:12px; color:var(--accent)">Balance</p>
+            <h1 style="font-size:48px;"><span id="dash-balance">0</span> 🪙</h1>
+            <div id="dash-pass-text" style="font-family:monospace; font-size:12px; color:var(--text-secondary); margin: 10px 0;">••••-••••-••••-••••</div>
+            <button onclick="togglePass()" style="background:none; border:none; color:var(--accent); cursor:pointer; font-size:12px">Show/Hide Pass</button>
+        </div>
+        <div class="glass-card" style="margin-top:20px;">
+            <h3>Pay</h3>
+            <input type="text" id="pay-to" placeholder="Receiver Name">
+            <input type="number" id="pay-amount" placeholder="Amount">
+            <button class="btn btn-primary" onclick="initiatePayment()">Send Creditum</button>
+            <button class="btn btn-secondary" onclick="buyCredits()" style="margin-top:10px; color:var(--success)">+ Buy Credits</button>
+        </div>
+        <div class="glass-card"><h3>Transactions</h3><div id="history-list"></div></div>
+        <button class="btn btn-secondary" style="color:var(--danger); border:none" onclick="location.reload()">Logout</button>
+    </div>
+</div>
+
+<div id="confirm-overlay" class="overlay hidden">
+    <div class="glass-card" style="width: 320px; text-align: center;">
+        <h3 id="rec-name">Confirm Pay</h3>
+        <input type="password" id="pay-pin" maxlength="6" placeholder="Enter PIN" style="text-align:center; margin-top:15px">
+        <div style="display:flex; gap:10px">
+            <button class="btn btn-secondary" onclick="closeOverlay()">Cancel</button>
+            <button class="btn btn-primary" id="final-pay-btn">Pay</button>
+        </div>
+    </div>
+  </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, get, update, push, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyDEH1H8SQxAsmDjNmtVSmxUBsAxhkknvMk",
+        authDomain: "creditum-central.firebaseapp.com",
+        databaseURL: "https://creditum-central-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "creditum-central",
+        storageBucket: "creditum-central.firebasestorage.app",
+        messagingSenderId: "573826473683",
+        appId: "1:573826473683:web:dfbbefb92d91cc77993e26",
+        measurementId: "G-K50RWVLTYD"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+    const googleProvider = new GoogleAuthProvider();
+
+    let currentUser = null; let tempGoogleUser = null; let passHidden = true;
+
+    window.showScreen = (id) => {
+        document.querySelectorAll('.app-shell > div, .glass-card').forEach(el => {
+            if(el.id !== 'auth-screen') el.classList.add('hidden');
+        });
+        document.getElementById(id).classList.remove('hidden');
+    };
+
+    const genPass = () => {
+        const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r = '';
+        for(let i=0; i<16; i++) { if(i>0 && i%4===0) r+='-'; r+=c[Math.floor(Math.random()*c.length)]; }
+        return r;
+    };
+
+    document.getElementById('google-login-btn').onclick = async () => {
+        try {
+            const res = await signInWithPopup(auth, googleProvider);
+            const key = res.user.email.replace(/[.#$[\]]/g, "_");
+            const snap = await get(ref(db, 'users/' + key));
+            if (snap.exists()) startDash(snap.val());
+            else { tempGoogleUser = res.user; showScreen('google-setup-screen'); }
+        } catch (e) { alert(e.message); }
+    };
+
+    window.finalizeGoogleAuth = async () => {
+        const pin = document.getElementById('google-reg-pin').value;
+        if(pin.length !== 6) return alert("6-digit PIN required");
+        const key = tempGoogleUser.email.replace(/[.#$[\]]/g, "_");
+        const all = (await get(ref(db, 'users'))).val() || {};
+        let name = tempGoogleUser.displayName.split(' ')[0].toLowerCase();
+        let count = 2;
+        const existing = Object.values(all).map(u => u.name);
+        while(existing.includes(name)) { name = `${name}${count++}`; }
+        const newUser = { name, email: tempGoogleUser.email, pass: genPass(), pin, balance: 0, photo: tempGoogleUser.photoURL, uid: key };
+        await set(ref(db, 'users/' + key), newUser);
+        startDash(newUser);
+    };
+
+    window.handleSignUp = async () => {
+        const n = document.getElementById('reg-name').value.trim().toLowerCase();
+        const p = document.getElementById('reg-pin').value;
+        if(!n || p.length !== 6) return alert("Invalid inputs");
+        const all = (await get(ref(db, 'users'))).val() || {};
+        let fName = n; let c = 2;
+        const ex = Object.values(all).map(u => u.name);
+        while(ex.includes(fName)) { fName = `${n}_${c++}`; }
+        const pass = genPass();
+        const newUser = { name: fName, pass, pin: p, balance: 0, photo: "https://cdn-icons-png.flaticon.com/512/149/149071.png", uid: fName };
+        await set(ref(db, 'users/' + fName), newUser);
+        alert("Save your Pass: " + pass);
+        startDash(newUser);
+    };
+
+    window.handleSignIn = async () => {
+        const n = document.getElementById('login-name').value.trim().toLowerCase();
+        const ps = document.getElementById('login-pass').value.trim();
+        const pi = document.getElementById('login-pin').value;
+        const all = (await get(ref(db, 'users'))).val();
+        const u = Object.values(all || {}).find(u => u.name === n && u.pass === ps && u.pin === pi);
+        if(u) startDash(u); else alert("Login Failed");
+    };
+
+    function startDash(u) {
+        currentUser = u; showScreen('dashboard-screen');
+        onValue(ref(db, 'users/' + u.uid), (s) => {
+            currentUser = s.val();
+            document.getElementById('dash-name').innerText = currentUser.name;
+            document.getElementById('user-photo').src = currentUser.photo;
+            document.getElementById('dash-balance').innerText = currentUser.balance;
+            const list = document.getElementById('history-list'); list.innerHTML = "";
+            if(currentUser.transactions) {
+                Object.values(currentUser.transactions).reverse().forEach(t => {
+                    const isS = t.type === 'Sent';
+                    list.innerHTML += `<div class="history-item">
+                        <span>${isS ? 'To' : 'From'} ${t.party}<br><small>${t.date}</small></span>
+                        <span style="color:${isS ? 'var(--danger)' : 'var(--success)'}">${isS ? '-' : '+'}${t.amount}</span>
+                    </div>`;
+                });
+            }
+        });
+    }
+
+    window.togglePass = () => { passHidden = !passHidden; document.getElementById('dash-pass-text').innerText = passHidden ? "••••-••••-••••-••••" : currentUser.pass; };
+
+    window.initiatePayment = async () => {
+        const to = document.getElementById('pay-to').value.trim().toLowerCase();
+        const amt = parseInt(document.getElementById('pay-amount').value);
+        if(amt > currentUser.balance || amt < 1) return alert("Check balance/amount");
+        const all = (await get(ref(db, 'users'))).val();
+        const rKey = Object.keys(all).find(k => all[k].name === to);
+        if(!rKey || to === currentUser.name) return alert("Invalid Receiver");
+        document.getElementById('rec-name').innerText = "Pay " + to;
+        document.getElementById('confirm-overlay').classList.remove('hidden');
+        document.getElementById('final-pay-btn').onclick = async () => {
+            if(document.getElementById('pay-pin').value !== currentUser.pin) return alert("Wrong PIN");
+            const dt = new Date().toLocaleString();
+            await update(ref(db, `users/${currentUser.uid}`), { balance: currentUser.balance - amt });
+            push(ref(db, `users/${currentUser.uid}/transactions`), { type: 'Sent', party: to, amount: amt, date: dt });
+            await update(ref(db, `users/${rKey}`), { balance: (all[rKey].balance || 0) + amt });
+            push(ref(db, `users/${rKey}/transactions`), { type: 'Received', party: currentUser.name, amount: amt, date: dt });
+            closeOverlay(); alert("Sent!");
+        };
+    };
+
+    window.closeOverlay = () => document.getElementById('confirm-overlay').classList.add('hidden');
+    window.buyCredits = () => window.open(`https://wa.me/917696321511?text=Buy%20Creditums`);
+    document.getElementById('p-upload').onchange = (e) => {
+        const r = new FileReader(); r.onload = async () => { await update(ref(db, `users/${currentUser.uid}`), { photo: r.result }); };
+        r.readAsDataURL(e.target.files[0]);
+    };
+</script>
+</body>
+</html>
